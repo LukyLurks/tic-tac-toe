@@ -13,6 +13,27 @@
       <h1>Tic Tac Toe</h1>
     </div>
 
+    <div>
+      <input id= "vs-human" type="radio" name="vs" value="2 players">
+      <label for="vs-human">2 Players</label>
+      
+      <input id= "vs-cpu" type="radio" name="vs" value="1 player vs CPU" checked>
+      <label for="vs-cpu">1 player vs CPU</label>
+      
+      <input id="two-cpus" type="radio" name="vs" value="2 CPUs">
+      <label for="two-cpus">2 CPUs</label>
+
+      <button id="new-game-button">New Game</button>
+    </div>
+
+    <div id="game-screen">
+      <div id="player-one-side"></div>
+      <div id="board"></div>
+      <div id="player-two-side"></div>
+      <div id="game-over-message"></div>
+    </div>
+
+
     <script src="scripts/main.js"></script>
   </body>
 </html>

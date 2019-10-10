@@ -17,8 +17,8 @@ const gameBoard = (() => {
   };
   const getCells = () => cells;
   const getSize = () => size;
-  const isFull = () => !cells.some(Cell.isEmpty);
-  const allSameSymbol = (array) => array.every(symbol === array[0]);
+  const isFull = () => !cells.some(cell => cell.isEmpty());
+  const allSameSymbol = (array) => array.every(s => s && (s === array[0]));
   const hasWinner = () => {
     const breakdown = cellsToLinesColsDiags();
     const winningLine = breakdown.lines.some(allSameSymbol);
@@ -28,34 +28,35 @@ const gameBoard = (() => {
   };
 
   const cellsToLinesColsDiags = () => {
-    const result = {
-      lines: [],
-      columns: [],
-      diagonals: [[], []],
-    };
+    const lines = [];
+    const columns = [];
+    const diagonals = [[], []];
     for(let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
         if (!lines[i]) lines[i] = [];
-        result.lines[i].push(cells[i*size + j]);
+        lines[i].push(cells[i*size + j].readSymbol());
 
         if (!columns[j]) columns[j] = [];
-        result.columns[j].push(cells[i + size*j]);
+        columns[j].push(cells[i*size + j].readSymbol());
 
         if (i - j === 0) {
-          diagonals[0].push(cells[i*size + j]);
+          diagonals[0].push(cells[i*size + j].readSymbol());
         }
-        if (i + j === size) {
-          diagonals[1].push(cells[i*size + j]);
+        if (i + j === size-1) {
+          diagonals[1].push(cells[i*size + j].readSymbol());
         }
       }
     }
-    return result;
+    return {lines, columns, diagonals};
   };
+
+  const setCell = (index, symbol) => cells[index] = Cell(symbol);
 
   return {
     Cell,
     resetCells,
     getCells,
+    setCell,
     getSize,
     isFull,
     hasWinner,
@@ -65,26 +66,33 @@ const gameBoard = (() => {
 const Player = (symbol, cpuFlag) => {
   const getSymbol = () => symbol;
   const isCpu = () => !!cpuFlag;
-  const playTurn = (cell) => {
-    if(!cell || cell.isEmpty()) {
-      Object.assign(cell, gameBoard.Cell(symbol));
+  const playTurn = e => {
+    if (gameBoard.hasWinner()) return;
+    if (e.target.classList.contains('cell')) {
+      const cellIndex = e.target.getAttribute('data-index');
+      if (gameBoard.getCells()[cellIndex].isEmpty()) {
+        ui.mark(cellIndex);
+        game.updateStatus(true);
+      }
+      game.updateStatus(false);
+    }
+  };
+  const playCpuTurn = () => {
+    const thinkingTime = 1000 + randomInt(2000);
+    const cellIndex = chooseEmptyCell();
+    setTimeout(() => {
+      ui.mark(cellIndex);
       game.updateStatus(true);
-    }
-    game.updateStatus(false);
+    }, thinkingTime);
   };
-  const playCpuTurn = (board) => {
-    const thinkingTime = 1500;
-    setTimeout(playTurn.bind(chooseEmptyCell(board)), thinkingTime);
-    game.updateStatus(true);
-  };
-  const chooseEmptyCell = (board) => {
-    const size = board.getSize();
-    const cells = board.getCells();
-    let chosenCell = cells[randomInt(size * size)];
-    while (!chosenCell.isEmpty()) {
-      chosenCell = cells[randomInt(size * size)];
+  const chooseEmptyCell = () => {
+    const size = gameBoard.getSize();
+    const cells = gameBoard.getCells();
+    let chosenIndex = randomInt(size * size);
+    while (!cells[chosenIndex].isEmpty()) {
+      chosenIndex = randomInt(size * size);
     }
-    return chosenCell;
+    return chosenIndex;
   }
   const randomInt = (max) => Math.floor(Math.random() * max);
 
@@ -93,6 +101,7 @@ const Player = (symbol, cpuFlag) => {
     isCpu,
     playTurn,
     playCpuTurn,
+    randomInt,
   };
 };
 
@@ -102,28 +111,32 @@ const game = (() => {
   const symbols = ['x', 'o'];
   const players = []
   let playerTurn = 0;
-
+  
   const startNewGame = () => {
-    toggleNewGameButton();
+    const cpu1 = document.querySelector('#two-cpus').checked;
+    const cpu2 = document.querySelector('#vs-cpu').checked || cpu1;
     gameBoard.resetCells();
+    ui.reset();
+    ui.renderBoard();
     removePlayers();
-    addPlayers();
-  };
-  const removePlayers = () => players.splice(0, players.length);
-  const addPlayers = (vsCpu) => {
-    players.push(Player(symbols[0]));
-    if (vsCpu) {
-      players.push(Player(symbol[1], true))
+    addPlayers(cpu1, cpu2);
+    if (cpu1 && cpu2) {
+      players[playerTurn].playCpuTurn();
     } else {
-      players.push(Player(symbols[1]));
+      board.addEventListener('click', players[playerTurn].playTurn);
     }
   };
-  const updateStatus = (canChangeTurns) => {
+  const removePlayers = () => players.splice(0, players.length);
+  const addPlayers = (cpu1, cpu2) => {
+    players.push(Player(symbols[0], cpu1));
+    players.push(Player(symbols[1], cpu2));
+  };
+  const updateStatus = (playerTurnComplete) => {
     if (gameBoard.hasWinner()) {
       endGame(win);
     } else if (gameBoard.isFull()) {
       endGame(draw)
-    } else if (canChangeTurns) {
+    } else if (playerTurnComplete) {
       changeTurns();
       if (players[playerTurn].isCpu()) {
         players[playerTurn].playCpuTurn();
@@ -131,29 +144,66 @@ const game = (() => {
     }
   }
   const changeTurns = () => playerTurn = (playerTurn + 1) % 2;
-  const endGame = (outcome) => {
-    if (outcome === win) {
-      displayWin();
-    } else if (outcome === draw) {
-      displayDraw();
-    }
-    toggleNewGameButton();
-  }
-  const displayWin = () => {}
-  const displayDraw = () => {}
-  const toggleNewGameButton = () => {}
-
+  const endGame = (outcome) => ui.showGameOver(outcome, players[playerTurn]);
+  const getPlayers = () => players;
+  const getTurn = () => playerTurn;
+  
   const newGameButton = document.querySelector('#new-game-button');
   newGameButton.addEventListener('click', startNewGame);
+  
+  
+  return {
+    updateStatus,
+    getPlayers,
+    getTurn,
+  }
+})();
 
+const ui = (() => {
   const board = document.querySelector('#board');
-  board.addEventListener('click', e => {
-    players[playerTurn].playTurn(e.target);
-  });
+  const gameOverMessage = document.querySelector('#game-over-message');
+
+  const reset = () => {
+    resetBoard();
+    resetGameOver();
+  };
+  const resetBoard = () => board.innerHTML = '';
+  const resetGameOver = () => gameOverMessage.innerHTML = '';
+  const renderBoard = () => {
+    const size = gameBoard.getSize()
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        board.appendChild(newCell(size*i + j));
+      }
+      board.appendChild(document.createElement('br'));
+    }
+  };
+  const newCell = (index) => {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.setAttribute('data-index', index);
+    return cell;
+  };
+  const mark = (cellIndex) => {
+    const uiCell = document.querySelector(`div[data-index="${cellIndex}"]`);
+    const symbol = game.getPlayers()[game.getTurn()].getSymbol()
+    uiCell.textContent = symbol;
+    gameBoard.setCell(cellIndex, symbol);
+    game.updateStatus();
+  };
+  const showGameOver = (outcome, player) => {
+    if (outcome === 'win') {
+      gameOverMessage.textContent = `${player.getSymbol()} wins!`;
+    } else if (outcome === 'draw') {
+      gameOverMessage.textContent = 'It\'s a draw.';
+    }
+    return gameOverMessage.textContent;
+  };
 
   return {
-    startNewGame,
-    updateStatus,
-    endGame,
-  }
+    reset,
+    renderBoard,
+    mark,
+    showGameOver,
+  };
 })();

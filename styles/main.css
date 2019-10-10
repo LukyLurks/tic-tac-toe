@@ -2,7 +2,13 @@ body, html {
   font-family: "Open Sans", Verdana, Arial;
 }
 
-.container {
-  text-align: center;
-  margin: auto;
+#board {
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.cell {
+  outline: 1px solid black;
+  padding: 1em;
 }
