@@ -1,116 +1,137 @@
+// Module that lets us see and update cells' data, and see if the game is over.
 const gameBoard = (() => {
   const size = 3;
   const cells = [];
 
+  // The cells are only useful in the board, so we're building them there.
   const Cell = (symbol) => {
     const isEmpty = () => symbol === undefined;
-    const readSymbol = () => symbol;
     return {
       isEmpty,
-      readSymbol,
+      get symbol() {
+        return symbol;
+      },
+      set symbol(s) {
+        symbol = s;
+      }
     };
   };
+
   const resetCells = () => {
     for (let i = 0; i < size * size; i++) {
       cells[i] = Cell();
     }
   };
-  const getCells = () => cells;
-  const getSize = () => size;
+
   const isFull = () => !cells.some(cell => cell.isEmpty());
-  const allSameSymbol = (array) => array.every(s => s && (s === array[0]));
+
   const hasWinner = () => {
-    const breakdown = cellsToLinesColsDiags();
-    const winningLine = breakdown.lines.some(allSameSymbol);
-    const winningCol = breakdown.columns.some(allSameSymbol);
-    const winningDiag = breakdown.diagonals.some(allSameSymbol);
+    const breakdown = _cellsToLinesColsDiags();
+    const winningLine = breakdown.lines.some(_allSameSymbol);
+    const winningCol = breakdown.columns.some(_allSameSymbol);
+    const winningDiag = breakdown.diagonals.some(_allSameSymbol);
     return winningLine || winningCol || winningDiag;
   };
 
-  const cellsToLinesColsDiags = () => {
+  const _allSameSymbol = (array) => array.every(s => s && (s === array[0]));
+
+  /** Goes through the array of cell objects and returns the contents in the 
+   * shape of {lines, columns, diagonals} where:
+   * - lines: [[line1], [line2], [line3]]
+   * - columns: [[col1], [col2], [col3]]
+   * - diagonals: [[diag1], [diag2]]
+   * containing symbols only (strings). It's easier to scan for a game over.
+   */
+  const _cellsToLinesColsDiags = () => {
     const lines = [];
     const columns = [];
     const diagonals = [[], []];
     for(let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
         if (!lines[i]) lines[i] = [];
-        lines[i].push(cells[i*size + j].readSymbol());
+        lines[i].push(cells[i*size + j].symbol);
 
         if (!columns[j]) columns[j] = [];
-        columns[j].push(cells[i*size + j].readSymbol());
+        columns[j].push(cells[i*size + j].symbol);
 
         if (i - j === 0) {
-          diagonals[0].push(cells[i*size + j].readSymbol());
+          diagonals[0].push(cells[i*size + j].symbol);
         }
         if (i + j === size-1) {
-          diagonals[1].push(cells[i*size + j].readSymbol());
+          diagonals[1].push(cells[i*size + j].symbol);
         }
       }
     }
     return {lines, columns, diagonals};
   };
 
-  const setCell = (index, symbol) => cells[index] = Cell(symbol);
-
   return {
-    Cell,
     resetCells,
-    getCells,
-    setCell,
-    getSize,
+    Cell,
     isFull,
     hasWinner,
+    get cells() {
+      return cells;
+    },
+    get size() {
+      return size;
+    },
   };
 })();
 
+// Factory function to create players or CPUs.
 const Player = (symbol, cpuFlag) => {
-  const getSymbol = () => symbol;
-  const isCpu = () => !!cpuFlag;
+  const isCpu = () => cpuFlag;
+
+  // Fired when the board is clicked
   const playTurn = e => {
-    if (gameBoard.hasWinner()) return;
+    if (gameBoard.hasWinner() || game.isCpuTurn()) return;
     if (e.target.classList.contains('cell')) {
       const cellIndex = e.target.getAttribute('data-index');
-      if (gameBoard.getCells()[cellIndex].isEmpty()) {
+      if (gameBoard.cells[cellIndex].isEmpty()) {
         ui.mark(cellIndex);
         game.updateStatus(true);
       }
       game.updateStatus(false);
     }
   };
+
   const playCpuTurn = () => {
-    const thinkingTime = 1000 + randomInt(2000);
-    const cellIndex = chooseEmptyCell();
+    const thinkingTime = 1000 + _randomInt(2000);
+    const cellIndex = _chooseEmptyCell();
     setTimeout(() => {
       ui.mark(cellIndex);
       game.updateStatus(true);
     }, thinkingTime);
   };
-  const chooseEmptyCell = () => {
-    const size = gameBoard.getSize();
-    const cells = gameBoard.getCells();
-    let chosenIndex = randomInt(size * size);
-    while (!cells[chosenIndex].isEmpty()) {
-      chosenIndex = randomInt(size * size);
+
+  const _chooseEmptyCell = () => {
+    let chosenIndex = _randomInt(gameBoard.size ** 2);
+    while (!gameBoard.cells[chosenIndex].isEmpty()) {
+      chosenIndex = _randomInt(gameBoard.size ** 2);
     }
     return chosenIndex;
-  }
-  const randomInt = (max) => Math.floor(Math.random() * max);
+  };
+
+  const _randomInt = (max) => Math.floor(Math.random() * max);
 
   return {
-    getSymbol,
     isCpu,
     playTurn,
     playCpuTurn,
-    randomInt,
+    get symbol() {
+      return symbol;
+    },
   };
 };
 
+// Module controlling the flow of the game.
 const game = (() => {
   const win = 'win';
   const draw = 'draw';
   const symbols = ['x', 'o'];
   const players = []
-  let playerTurn = 0;
+  let turn = 0;
   
   const startNewGame = () => {
     const cpu1 = document.querySelector('#two-cpus').checked;
@@ -118,82 +139,106 @@ const game = (() => {
     gameBoard.resetCells();
     ui.reset();
     ui.renderBoard();
-    removePlayers();
-    addPlayers(cpu1, cpu2);
+    _removePlayers();
+    _addPlayers(cpu1, cpu2);
     if (cpu1 && cpu2) {
-      players[playerTurn].playCpuTurn();
+      players[turn].playCpuTurn();
     } else {
-      board.addEventListener('click', players[playerTurn].playTurn);
+      ui.allowPlayerMoves();
     }
   };
-  const removePlayers = () => players.splice(0, players.length);
-  const addPlayers = (cpu1, cpu2) => {
+
+  const _removePlayers = () => players.splice(0, players.length);
+
+  const _addPlayers = (cpu1, cpu2) => {
     players.push(Player(symbols[0], cpu1));
     players.push(Player(symbols[1], cpu2));
   };
-  const updateStatus = (playerTurnComplete) => {
+
+  // Fired after each move from a player or CPU
+  const updateStatus = (turnComplete) => {
     if (gameBoard.hasWinner()) {
-      endGame(win);
+      _endGame(win);
     } else if (gameBoard.isFull()) {
-      endGame(draw)
-    } else if (playerTurnComplete) {
-      changeTurns();
-      if (players[playerTurn].isCpu()) {
-        players[playerTurn].playCpuTurn();
+      _endGame(draw)
+      // Only for legal moves: player clicking an empty cell during their turn
+    } else if (turnComplete) {
+      _changeTurns();
+      if (players[turn].isCpu()) {
+        players[turn].playCpuTurn();
       }
     }
-  }
-  const changeTurns = () => playerTurn = (playerTurn + 1) % 2;
-  const endGame = (outcome) => ui.showGameOver(outcome, players[playerTurn]);
-  const getPlayers = () => players;
-  const getTurn = () => playerTurn;
-  
-  const newGameButton = document.querySelector('#new-game-button');
-  newGameButton.addEventListener('click', startNewGame);
-  
+  };
+
+  // Will prevent a player to play during CPU's turn.
+  const isCpuTurn = () => players[1].symbol === symbols[turn];
+  const _changeTurns = () => turn = (turn + 1) % 2;
+  const _endGame = (outcome) => ui.showGameOver(outcome, players[turn]);
   
   return {
+    startNewGame,
     updateStatus,
-    getPlayers,
-    getTurn,
+    isCpuTurn,
+    get players() {
+      return players;
+    },
+    get turn() {
+      return turn;
+    },
   }
 })();
 
+// User interface; gives user actions effects on the system.
 const ui = (() => {
   const board = document.querySelector('#board');
   const gameOverMessage = document.querySelector('#game-over-message');
-
+  const newGameButton = document.querySelector('#new-game-button');
+  
+  newGameButton.addEventListener('click', game.startNewGame);
+  
   const reset = () => {
-    resetBoard();
-    resetGameOver();
+    _resetBoard();
+    _resetGameOver();
   };
-  const resetBoard = () => board.innerHTML = '';
-  const resetGameOver = () => gameOverMessage.innerHTML = '';
+
+  const _resetBoard = () => board.innerHTML = '';
+
+  const _resetGameOver = () => gameOverMessage.innerHTML = '';
+
   const renderBoard = () => {
-    const size = gameBoard.getSize()
+    const size = gameBoard.size
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
-        board.appendChild(newCell(size*i + j));
+        board.appendChild(_newCell(size*i + j));
       }
       board.appendChild(document.createElement('br'));
     }
   };
-  const newCell = (index) => {
+
+  const _newCell = (index) => {
     const cell = document.createElement('div');
     cell.classList.add('cell');
+    // To know which cell should be updated in the gameBoard data:
     cell.setAttribute('data-index', index);
     return cell;
   };
+  
+  const allowPlayerMoves = () => {
+    board.addEventListener('click', game.players[game.turn].playTurn);
+  };
+
+  // Marks the board with a symbol and updates data accordingly.
   const mark = (cellIndex) => {
     const uiCell = document.querySelector(`div[data-index="${cellIndex}"]`);
-    const symbol = game.getPlayers()[game.getTurn()].getSymbol()
+    const symbol = game.players[game.turn].symbol;
     uiCell.textContent = symbol;
-    gameBoard.setCell(cellIndex, symbol);
+    gameBoard.cells[cellIndex].symbol = symbol;
     game.updateStatus();
   };
+
   const showGameOver = (outcome, player) => {
     if (outcome === 'win') {
-      gameOverMessage.textContent = `${player.getSymbol()} wins!`;
+      gameOverMessage.textContent = `${player.symbol} wins!`;
     } else if (outcome === 'draw') {
       gameOverMessage.textContent = 'It\'s a draw.';
     }
@@ -203,6 +248,7 @@ const ui = (() => {
   return {
     reset,
     renderBoard,
+    allowPlayerMoves,
     mark,
     showGameOver,
   };
