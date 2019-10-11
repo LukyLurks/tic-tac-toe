@@ -80,7 +80,7 @@ const gameBoard = (() => {
 })();
 
 // Factory function to create players or CPUs.
-const Player = (symbol, cpuFlag) => {
+const Player = ({name, symbol, cpuFlag}) => {
   const isCpu = () => cpuFlag;
 
   // Fired when the board is clicked
@@ -119,6 +119,12 @@ const Player = (symbol, cpuFlag) => {
     isCpu,
     playTurn,
     playCpuTurn,
+    get name() {
+      return name;
+    },
+    set name(newName) {
+      name = newName;
+    },
     get symbol() {
       return symbol;
     },
@@ -136,12 +142,22 @@ const game = (() => {
   const startNewGame = () => {
     const cpu1 = document.querySelector('#two-cpus').checked;
     const cpu2 = document.querySelector('#vs-cpu').checked || cpu1;
+    const player1Params = {
+      name: document.querySelector('#player-1-name').value,
+      symbol: symbols[0],
+      cpuFlag: cpu1,
+    };
+    const player2Params = {
+      name: document.querySelector('#player-2-name').value,
+      symbol: symbols[1],
+      cpuFlag: cpu2,
+    };
     gameBoard.resetCells();
     ui.reset();
     ui.renderBoard();
     _removePlayers();
-    _addPlayers(cpu1, cpu2);
-    if (cpu1 && cpu2) {
+    _addPlayers(player1Params, player2Params);
+    if (players.every(p => p.isCpu())) {
       players[turn].playCpuTurn();
     } else {
       ui.allowPlayerMoves();
@@ -150,9 +166,9 @@ const game = (() => {
 
   const _removePlayers = () => players.splice(0, players.length);
 
-  const _addPlayers = (cpu1, cpu2) => {
-    players.push(Player(symbols[0], cpu1));
-    players.push(Player(symbols[1], cpu2));
+  const _addPlayers = (player1Params, player2Params) => {
+    players.push(Player(player1Params));
+    players.push(Player(player2Params));
   };
 
   // Fired after each move from a player or CPU
@@ -172,7 +188,9 @@ const game = (() => {
 
   // Will prevent a player to play during CPU's turn.
   const isCpuTurn = () => players[1].symbol === symbols[turn];
+
   const _changeTurns = () => turn = (turn + 1) % 2;
+
   const _endGame = (outcome) => ui.showGameOver(outcome, players[turn]);
   
   return {
@@ -238,7 +256,7 @@ const ui = (() => {
 
   const showGameOver = (outcome, player) => {
     if (outcome === 'win') {
-      gameOverMessage.textContent = `${player.symbol} wins!`;
+      gameOverMessage.textContent = `${player.name} wins! Congratulations!`;
     } else if (outcome === 'draw') {
       gameOverMessage.textContent = 'It\'s a draw.';
     }
