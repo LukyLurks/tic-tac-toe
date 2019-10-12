@@ -152,11 +152,12 @@ const game = (() => {
       symbol: symbols[1],
       cpuFlag: cpu2,
     };
+    turn = 0;
     gameBoard.resetCells();
-    ui.reset();
-    ui.renderBoard();
     _removePlayers();
     _addPlayers(player1Params, player2Params);
+    ui.reset();
+    ui.renderBoard();
     if (players.every(p => p.isCpu())) {
       players[turn].playCpuTurn();
     } else {
@@ -187,9 +188,15 @@ const game = (() => {
   };
 
   // Will prevent a player to play during CPU's turn.
-  const isCpuTurn = () => players[1].symbol === symbols[turn];
+  const isCpuTurn = () => {
+    if (!players[1].isCpu()) return false;
+    return players[1].symbol === symbols[turn];
+  }
 
-  const _changeTurns = () => turn = (turn + 1) % 2;
+  const _changeTurns = () => {
+    turn = (turn + 1) % 2;
+    ui.showPlayerTurn();
+  };
 
   const _endGame = (outcome) => ui.showGameOver(outcome, players[turn]);
   
@@ -209,27 +216,69 @@ const game = (() => {
 // User interface; gives user actions effects on the system.
 const ui = (() => {
   const board = document.querySelector('#board');
-  const gameOverMessage = document.querySelector('#game-over-message');
+  const gameOverNotice = document.querySelector('#game-over-message');
   const newGameButton = document.querySelector('#new-game-button');
+  const settings = document.querySelector('#game-settings');
   
   newGameButton.addEventListener('click', game.startNewGame);
   
   const reset = () => {
     _resetBoard();
     _resetGameOver();
+    _hideSettings();
+    _resetNameDisplay();
+    _resetSymbolDisplay();
+    showPlayerTurn();
   };
 
   const _resetBoard = () => board.innerHTML = '';
 
-  const _resetGameOver = () => gameOverMessage.innerHTML = '';
+  const _resetGameOver = () => gameOverNotice.innerHTML = '';
 
+  const _resetNameDisplay = () => {
+    const name1 = document.querySelector('#name-1-display');
+    const name2 = document.querySelector('#name-2-display');
+    [name1, name2].map((name, index) => {
+      if (game.players[index].name) {
+        name.textContent = game.players[index].name;
+      } else {
+        name.textContent = `P${index+1}`;
+      }
+      if (game.players[index].isCpu()) {
+        name.textContent += ' (CPU)';
+      }
+    });
+  };
+  
+  const _resetSymbolDisplay = () => {
+    const symbol1 = document.querySelector('#symbol-1-display');
+    const symbol2 = document.querySelector('#symbol-2-display');
+    [symbol1, symbol2].map((symbol, index) => {
+      symbol.textContent = game.players[index].symbol;
+    });
+  };
+  
+  const _hideSettings = () => settings.classList.add('hidden');
+
+  const _showSettings = () => settings.classList.remove('hidden');
+
+  const showPlayerTurn = () => {
+    const p1 = document.querySelector('#player-one-side');
+    const p2 = document.querySelector('#player-two-side');
+    if (game.turn === 0) {
+      p2.classList.remove('playing');
+      p1.classList.add('playing');
+    } else if (game.turn === 1) {
+      p1.classList.remove('playing');
+      p2.classList.add('playing');
+    }
+  }
   const renderBoard = () => {
     const size = gameBoard.size
     for (let i = 0; i < size; i++) {
       for (let j = 0; j < size; j++) {
         board.appendChild(_newCell(size*i + j));
       }
-      board.appendChild(document.createElement('br'));
     }
   };
 
@@ -256,16 +305,22 @@ const ui = (() => {
 
   const showGameOver = (outcome, player) => {
     if (outcome === 'win') {
-      gameOverMessage.textContent = `${player.name} wins! Congratulations!`;
+      if (!!player.name) {
+        gameOverNotice.textContent = `${player.name} wins! Congratulations!`;
+      } else {
+        gameOverNotice.textContent = `${player.symbol} wins! Congratulations!`;
+      }
     } else if (outcome === 'draw') {
-      gameOverMessage.textContent = 'It\'s a draw.';
+      gameOverNotice.textContent = 'It\'s a draw.';
     }
-    return gameOverMessage.textContent;
+    _showSettings();
+    return gameOverNotice.textContent;
   };
 
   return {
     reset,
     renderBoard,
+    showPlayerTurn,
     allowPlayerMoves,
     mark,
     showGameOver,

@@ -9,34 +9,56 @@
   </head>
 
   <body>
-    <div class="container">
+    <div id="main-title">
       <h1>Tic Tac Toe</h1>
     </div>
 
-    <div>
-      <input id= "vs-human" type="radio" name="vs" value="2 players">
-      <label for="vs-human">2 Players</label>
-      
-      <input id= "vs-cpu" type="radio" name="vs" value="1 player vs CPU" checked>
-      <label for="vs-cpu">1 player vs CPU</label>
-      
-      <input id="two-cpus" type="radio" name="vs" value="2 CPUs">
-      <label for="two-cpus">2 CPUs</label>
+    <div id="game-settings">
+      <div id="player-cpu-select">
+        <div>
+          <input id= "vs-human" type="radio" name="vs" value="2 players">
+          <label for="vs-human">2 Players</label>
+        </div>
+        
+        <div>
+          <input id= "vs-cpu" type="radio" name="vs" value="1 player vs CPU" checked>
+          <label for="vs-cpu">1 player vs CPU</label>
+        </div>
+        
+        <div>
+          <input id="two-cpus" type="radio" name="vs" value="2 CPUs">
+          <label for="two-cpus">2 CPUs</label>
+        </div>
+      </div>
 
-      <label for="name-1">P1 name: </label>
-      <input id="player-1-name" type="text" name="name-1">
-      <label for="name-1">P2 name: </label>
-      <input id="player-2-name" type="text" name="name-2">
-
-      <button id="new-game-button">New Game</button>
+      <div id="player-names">
+        <div>
+          <label for="name-1">P1 name: </label>
+          <input id="player-1-name" type="text" name="name-1">
+        </div>
+        <div>
+          <label for="name-1">P2 name: </label>
+          <input id="player-2-name" type="text" name="name-2">
+        </div>
+      </div>
+      <div id="new-game-button-container">
+        <button id="new-game-button">New Game</button>
+      </div>
     </div>
+
 
     <div id="game-screen">
-      <div id="player-one-side"></div>
+      <div id="player-one-side">
+        <p id="name-1-display"></p>
+        <p id="symbol-1-display"></p>
+      </div>
       <div id="board"></div>
-      <div id="player-two-side"></div>
-      <div id="game-over-message"></div>
+      <div id="player-two-side">
+        <p id="name-2-display"></p>
+        <p id="symbol-2-display"></p>
+      </div>
     </div>
+    <div id="game-over-message"></div>
 
 
     <script src="scripts/main.js"></script>
