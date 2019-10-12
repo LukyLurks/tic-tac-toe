@@ -135,7 +135,7 @@ const Player = ({name, symbol, cpuFlag}) => {
 const game = (() => {
   const win = 'win';
   const draw = 'draw';
-  const symbols = ['x', 'o'];
+  const symbols = ['X', 'O'];
   const players = []
   let turn = 0;
   
@@ -219,6 +219,7 @@ const ui = (() => {
   const gameOverNotice = document.querySelector('#game-over-message');
   const newGameButton = document.querySelector('#new-game-button');
   const settings = document.querySelector('#game-settings');
+  const colors = ['rgba(79, 137, 205, .7)', 'rgba(233, 28, 45, .6)'];
   
   newGameButton.addEventListener('click', game.startNewGame);
   
@@ -299,6 +300,7 @@ const ui = (() => {
     const uiCell = document.querySelector(`div[data-index="${cellIndex}"]`);
     const symbol = game.players[game.turn].symbol;
     uiCell.textContent = symbol;
+    uiCell.style.color = colors[game.turn];
     gameBoard.cells[cellIndex].symbol = symbol;
     game.updateStatus();
   };
