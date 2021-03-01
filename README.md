@@ -9,7 +9,7 @@ them, as they were introduced in the previous lesson.
 
 ## Usage
 
-- Visit [the game's page](https://lcyne.github.io/tic-tac-toe/)
+- Visit [the game's page](https://lukylurks.github.io/tic-tac-toe/)
 - Enter names if you want, select the game mode, and hit "New Game" to start
   playing. If you choose 2 players, just take turns clicking.
 
